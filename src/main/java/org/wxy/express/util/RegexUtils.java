@@ -10,7 +10,9 @@ public class RegexUtils {
 	private final static Logger logger = LoggerFactory.getLogger(RegexUtils.class);
 	
 	/**
-	 * 获取查询的字符串 将匹配的字符串取出
+	 * 获取查询的字符串 将匹配的字符串取出<br>
+	 *  regx尽量只能匹配到唯一的
+	 * 
 	 */
 	public static String getString(String str, String regx) {
 		String matcherStr = "";
@@ -24,35 +26,35 @@ public class RegexUtils {
 		// 查找符合规则的子串
 		while (matcher.find()) {
 			// 获取 字符串
-			matcherStr = matcher.group();
+			matcherStr = matcher.group(); 
 			// 获取的字符串的首位置和末位置
 			logger.debug("matcherStr:"+matcherStr + " " +matcher.start() + "--" + matcher.end());
 		}
 		return matcherStr;
 	}
 
-//	/**
-//	 * 字符串的分割
-//	 */
-//	private void getDivision(String str, String regx) {
-//		String[] dataStr = str.split(regx);
-//		for (String s : dataStr) {
-//			System.out.println("正则表达式分割++" + s);
-//		}
-//	}
-//
-//	/**
-//	 * 字符串的替换
-//	 */
-//	private void getReplace(String str, String regx, String replaceStr) {
-//		String stri = str.replaceAll(regx, replaceStr);
-//		System.out.println("正则表达式替换" + stri);
-//	}
-//
-//	/**
-//	 * 字符串处理之匹配 String类中的match 方法
-//	 */
-//	public void getMatch(String str, String regx) {
-//		System.out.println("正则表达匹配" + str.matches(regx));
-//	}
+	/**
+	 * 字符串的分割
+	 */
+	public void getDivision(String str, String regx) {
+		String[] dataStr = str.split(regx);
+		for (String s : dataStr) {
+			System.out.println("正则表达式分割++" + s);
+		}
+	}
+
+	/**
+	 * 字符串的替换
+	 */
+	public void getReplace(String str, String regx, String replaceStr) {
+		String stri = str.replaceAll(regx, replaceStr);
+		System.out.println("正则表达式替换" + stri);
+	}
+
+	/**
+	 * 字符串处理之匹配 String类中的match 方法
+	 */
+	public void getMatch(String str, String regx) {
+		System.out.println("正则表达匹配" + str.matches(regx));
+	}
 }

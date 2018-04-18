@@ -15,7 +15,6 @@ import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.ScrollPaneConstants;
-import javax.swing.Timer;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
@@ -35,7 +34,6 @@ public class SearchJP extends JPanel implements ActionListener,MouseListener,Cha
 	JButton search,stop,clear = null;
 	JTextArea sourceOrders = null;
 	JProgressBar progressBar = null;
-	Timer timer = null;
 	
 	/**
 	 * 查询框
@@ -86,7 +84,6 @@ public class SearchJP extends JPanel implements ActionListener,MouseListener,Cha
 		progressBar.setBounds(14, 558, 372, 27);
 		progressBar.addChangeListener(this);
 		
-		
 		add(progressBar);
 		
 	}
@@ -123,31 +120,6 @@ public class SearchJP extends JPanel implements ActionListener,MouseListener,Cha
 		} 
 
 	}
-	
-//	static class BarThread extends Thread {
-//		private static int DELAY = 500;
-//
-//		JProgressBar progressBar;
-//
-//		public BarThread(JProgressBar bar) {
-//			progressBar = bar;
-//		}
-//
-//		public void run() {
-//			int minimum = progressBar.getMinimum();
-//			int maximum = progressBar.getMaximum();
-//			for (int i = minimum; i < maximum; i++) {
-//				try {
-//					int value = progressBar.getValue();
-//					progressBar.setValue(value + 1);
-//
-//					Thread.sleep(DELAY);
-//				} catch (InterruptedException ignoredException) {
-//				}
-//			}
-//		}
-//	}
-
 	
 	@Override
 	/** 鼠标单击事件 */
