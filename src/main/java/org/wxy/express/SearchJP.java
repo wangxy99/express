@@ -7,6 +7,8 @@ import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.FutureTask;
 
 import javax.swing.JButton;
 import javax.swing.JOptionPane;
@@ -15,6 +17,7 @@ import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.ScrollPaneConstants;
+import javax.swing.Timer;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
@@ -22,6 +25,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.wxy.express.constant.Constants;
+import org.wxy.express.model.ProgressInfo;
 import org.wxy.express.service.QueryService;
 import org.wxy.express.service.impl.UPSService;
 
@@ -29,11 +33,16 @@ public class SearchJP extends JPanel implements ActionListener,MouseListener,Cha
 	private static final Logger logger = LoggerFactory.getLogger(SearchJP.class);
 	private static final long serialVersionUID = 1L;
 
+	private QueryService query ;
+
+	private Thread searchThread;
+	
 	private static final String DEFAULT_TEXT = "请输入单号!";
 	
 	JButton search,stop,clear = null;
 	JTextArea sourceOrders = null;
 	JProgressBar progressBar = null;
+	Timer timer = null;
 	
 	/**
 	 * 查询框
@@ -78,7 +87,7 @@ public class SearchJP extends JPanel implements ActionListener,MouseListener,Cha
 		progressBar.setMaximum(100);
 		progressBar.setMinimum(0);
 		progressBar.setValue(0);
-		progressBar.setString("未启用");
+		progressBar.setString("未运行");
 		progressBar.setBackground(new Color(0xcf, 0xd1, 0xd3));
 		progressBar.setForeground(new Color(0xa3, 0xef, 0xb0));
 		progressBar.setBounds(14, 558, 372, 27);
@@ -86,12 +95,18 @@ public class SearchJP extends JPanel implements ActionListener,MouseListener,Cha
 		
 		add(progressBar);
 		
+		timer=new Timer(1000,this);
+		
+		query = new UPSService(); //初始化查询服务
+
+		searchThread = new Thread();
+		
 	}
 	
 	@Override
 	public void actionPerformed(ActionEvent e) {
 		logger.debug("按钮:"+e.getActionCommand());
-		final QueryService query = new UPSService();
+		
 		if (e.getSource() == search) {
 			String text = sourceOrders.getText();
 			
@@ -100,24 +115,64 @@ public class SearchJP extends JPanel implements ActionListener,MouseListener,Cha
 				JOptionPane.showMessageDialog(null, DEFAULT_TEXT);
 				return ;
 			}
-			Map<String, Object> result = query.find(sourceOrders.getText());
 			
-			if(Constants.STATE_SUCCESS.equals(result.get(Constants.STATE))) {
-				JOptionPane.showMessageDialog(null, "查询成功,请查看输出目录!");
-			}else if(Constants.STATE_FAIL.equals(result.get(Constants.STATE))) {
-				JOptionPane.showMessageDialog(null, "查询失败,请联系开发者!");
-			}else {
-				JOptionPane.showMessageDialog(null, "未知异常,请联系开发者!");
+			// 异步调用查询启动
+			try {
+				// 此处最好用 线程是否激活，因为状态有 TIMED_WAITING 、 RUNNABLE
+//				if("RUNNABLE".equals(searchThread.getState().toString())) {
+				if(searchThread.isAlive()) {
+					JOptionPane.showMessageDialog(null, "正在运行中，请等待！");
+					return ;
+				}
+				// “查询” 线程
+				searchThread = new Thread(new SearchRunnable(query, sourceOrders.getText()));
+				searchThread.start();
+				logger.info("当前查询线程状态：{}", searchThread.getState());
+				logger.info("当前查询线程激活状态：{}", searchThread.isAlive());
+				timer.start();  // 启动获取进度的定时器
+			} catch(Exception ee) {
+				logger.error(ee.getMessage(), ee); // 方便中步线程时
 			}
 
 		} else if (e.getSource() == stop) {
 			int option = JOptionPane.showConfirmDialog(this, "确认中止当前查询任务?", "温馨提示", JOptionPane.YES_NO_OPTION);
-			if(JOptionPane.YES_OPTION == option) {
-				JOptionPane.showMessageDialog(null, "中止");
-			}
+			JOptionPane.showMessageDialog(null, "该功能暂未实现");
+//			if(JOptionPane.YES_OPTION == option) {
+//				searchThread.interrupt(); // 调用此方法结束线程，如果线程当前是阻塞状态，线程会报InterruptedException  
+//				timer.stop();
+//			}
 		} else if (e.getSource() == clear) {
+			logger.info("当前查询线程状态：{}", searchThread.getState());
+			logger.info("当前查询线程激活状态：{}", searchThread.isAlive());
+			if(searchThread.isAlive()) {
+				JOptionPane.showMessageDialog(null, "正在运行中，请等待！");
+				return ;
+			}
 			sourceOrders.setText("");
-		} 
+		} else if (e.getSource() == timer) {
+			logger.info("timer");
+			try {
+				FutureTask<ProgressInfo> futureTask = new FutureTask<ProgressInfo>(new ProgressCallable(query));
+				new Thread(futureTask).start();
+				
+				ProgressInfo progress = futureTask.get();
+				int maximum = progress.getMaximum();
+				int value = progress.getCurrentValue();
+				logger.info("当前进度信息，string:{} maximun:{} value:{}",
+						new Object[] { progress.getString(), progress.getMaximum(), progress.getCurrentValue() });
+				if (value < maximum) {
+					progressBar.setString(progress.getString());
+					progressBar.setMaximum(maximum);
+					progressBar.setValue(value);
+				} else {
+					progressBar.setValue(maximum);
+					progressBar.setString("已完成");
+					timer.stop();
+				}
+			} catch (Exception e1) {
+				logger.error("获取进度异常", e1);
+			}
+		}
 
 	}
 	
@@ -182,11 +237,58 @@ public class SearchJP extends JPanel implements ActionListener,MouseListener,Cha
 
 	@Override
 	public void stateChanged(ChangeEvent e) {
-		// TODO Auto-generated method stub
-		  int value=progressBar.getValue();
-	        if(e.getSource()==progressBar){
-	            logger.info("目前已完成进度："+Integer.toString(value)+"%");
-	        }
+		if (e.getSource() == progressBar) {
+			logger.info("目前进度：" + progressBar.getString());
+		}
 	}
 	
+}
+
+class SearchRunnable implements Runnable {
+	private static final Logger logger = LoggerFactory.getLogger(SearchRunnable.class);
+	
+    private QueryService query;
+    private String orders;
+
+    public SearchRunnable(QueryService query, String orders) {
+        this.query = query;
+        this.orders = orders;
+    }
+    
+	@Override
+	public void run() {
+		logger.info("SearchRunnable query:" + query.toString());
+		Map<String, Object> result =  query.find(orders);
+		
+		if(Constants.STATE_SUCCESS.equals(result.get(Constants.STATE))) {
+			JOptionPane.showMessageDialog(null, "查询成功,请查看输出目录!");
+		}else if(Constants.STATE_FAIL.equals(result.get(Constants.STATE))) {
+			JOptionPane.showMessageDialog(null, "查询失败,请联系开发者!");
+		}else {
+			JOptionPane.showMessageDialog(null, "未知异常,请联系开发者!");
+		}
+	}
+
+	public String getOrders() {
+		return orders;
+	}
+
+	public void setOrders(String orders) {
+		this.orders = orders;
+	}
+}
+
+
+class ProgressCallable implements Callable<ProgressInfo> {
+	private static final Logger logger = LoggerFactory.getLogger(ProgressCallable.class);
+	private QueryService query;
+
+	public ProgressCallable(QueryService query) {
+		this.query = query;
+	}
+	
+	public ProgressInfo call() throws Exception {
+		logger.info("ProgressCallable query:" + query.toString());
+		return  query.getProgress();
+	}
 }

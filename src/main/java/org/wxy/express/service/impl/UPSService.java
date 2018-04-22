@@ -15,6 +15,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.wxy.express.constant.Constants;
+import org.wxy.express.model.ProgressInfo;
 import org.wxy.express.service.QueryService;
 import org.wxy.express.util.HttpClientUtils;
 import org.wxy.express.util.POIUtils;
@@ -23,6 +24,7 @@ import org.wxy.express.util.RegexUtils;
 public class UPSService implements QueryService {
 	private static final Logger logger = LoggerFactory.getLogger(UPSService.class);
 	ReadWriteLock rwl = new ReentrantReadWriteLock();  //读写锁
+	ProgressInfo progress = new ProgressInfo(2);
 	
 	SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd");
 	
@@ -38,7 +40,6 @@ public class UPSService implements QueryService {
 		if(orderList == null || orderList.isEmpty() ) {
 			throw new IllegalArgumentException("传入订单号异常");
 		}
-		
 		Calendar calendar = Calendar.getInstance();
 		Date date = calendar.getTime();
 		String currentDate = sdf.format(date);
@@ -48,6 +49,13 @@ public class UPSService implements QueryService {
 		
 		List<String[]> data = new ArrayList<String[]>();
 		for (int i=0,len=orderList.size(); i < len ; i++) {
+//			// 判断线程状态，用于线程中止功能
+//			logger.info("当前线程状态，" + Thread.currentThread().isInterrupted() + "; " + Thread.currentThread().toString());
+//			if(Thread.currentThread().isInterrupted()) {
+//				break;
+//			}
+			progress.setMaximum(orderList.size());
+			progress.setCurrentValue(i + 1);
 			String order = orderList.get(i);
 			Map<String, Object> params = new HashMap<String, Object>();
 			params.put("TrackingNumber", order);
@@ -63,7 +71,6 @@ public class UPSService implements QueryService {
 				
 				String getStringReg = "<input type=\"hidden\" name=\"trackNums\" value=\"\\w{18}\">";
 				String aaa = RegexUtils.getString(aa, getStringReg);
-//					int num1 = aa.indexOf("name=\"tdmp1.y\">");
 				if (StringUtils.isNotBlank(aaa)) {
 					int start = aaa.length() - 20;
 					int end = aaa.length() - 2;
@@ -71,7 +78,7 @@ public class UPSService implements QueryService {
 				}
 
 				data.add(sub);
-				Thread.sleep(1000L);
+				Thread.sleep(500L);
 			} catch (Exception e) {
 				logger.error(e.getMessage(), e);
 			}
@@ -110,6 +117,11 @@ public class UPSService implements QueryService {
 			logger.error(ee.getMessage(), ee);
 		}
 		return map;
+	}
+
+	@Override
+	public ProgressInfo getProgress() {
+		return progress;
 	}
 
 

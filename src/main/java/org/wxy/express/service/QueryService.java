@@ -3,6 +3,8 @@ package org.wxy.express.service;
 import java.util.List;
 import java.util.Map;
 
+import org.wxy.express.model.ProgressInfo;
+
 public interface QueryService {
 	
 	/**
@@ -17,5 +19,11 @@ public interface QueryService {
 	 * @return
 	 */
 	Map<String,Object> find(List<String> orderList);
+	
+	/**
+	 * 获取进度
+	 * @return
+	 */
+	ProgressInfo getProgress();
 	
 }

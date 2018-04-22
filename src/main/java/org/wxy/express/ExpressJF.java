@@ -32,7 +32,7 @@ public class ExpressJF extends JFrame {
 	 * Create the frame.
 	 */
 	public ExpressJF() {
-		setTitle("UPS单号查询V1.0.0 By wxy");
+		setTitle("UPS单号查询V2.0.0 By wxy");
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setPreferredSize(new Dimension(415,690));//设置最优大小  
 		//参考（JFrame自动调整大小适应子控件）：https://blog.csdn.net/lihailinlihailin/article/details/6949155?locationNum=15 
